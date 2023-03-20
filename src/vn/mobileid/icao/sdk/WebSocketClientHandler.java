@@ -40,6 +40,7 @@ import vn.mobileid.icao.sdk.message.resp.BiometricAuthResp;
 import vn.mobileid.icao.sdk.message.resp.BiometricEvidenceResp;
 import vn.mobileid.icao.sdk.message.resp.ConnectToDeviceResp;
 import vn.mobileid.icao.sdk.message.resp.DisplayInformationResp;
+import vn.mobileid.icao.sdk.message.resp.FingerEnrollmentResp;
 import vn.mobileid.icao.sdk.message.resp.ScanDocumentResp;
 
 /**
@@ -286,6 +287,16 @@ class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
                                 });
                             }
                             break;
+                        case FingerEnrollment: // 2.12
+                            FingerEnrollmentResp fingerEnrollmentResp = getFingerEnrollment(json);
+                            sync.setSuccess(fingerEnrollmentResp);
+                            if (sync.getFingerEnrollmentListener()!= null) {
+                                executorService.submit(() -> {
+                                    sync.getFingerEnrollmentListener()
+                                            .onFingerEnrollment(fingerEnrollmentResp);
+                                });
+                            }
+                            break;
                     }
                 } catch (Exception ex) {
                     sync.setError(ex);
@@ -328,6 +339,12 @@ class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
                     if (sync.getBiometricEvidenceListener() != null) {
                         executorService.submit(() -> {
                             sync.getBiometricEvidenceListener()
+                                    .onError(ex);
+                        });
+                    }
+                    if (sync.getFingerEnrollmentListener() != null) {
+                        executorService.submit(() -> {
+                            sync.getFingerEnrollmentListener()
                                     .onError(ex);
                         });
                     }
@@ -456,6 +473,16 @@ class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
         ISMessage<BiometricEvidenceResp> scanDoc = Utils.GSON.fromJson(json, type);
         BiometricEvidenceResp biometricEvidenceResp = scanDoc.getData();
         return biometricEvidenceResp;
+    }
+    //</editor-fold>
+    
+    //<editor-fold defaultstate="collapsed" desc="GET FINGER ENROLLMENT">
+    private FingerEnrollmentResp getFingerEnrollment(String json) {
+        Type type = new TypeToken<ISMessage<FingerEnrollmentResp>>() {
+        }.getType();
+        ISMessage<FingerEnrollmentResp> scanDoc = Utils.GSON.fromJson(json, type);
+        FingerEnrollmentResp fingerEnrollmentResp = scanDoc.getData();
+        return fingerEnrollmentResp;
     }
     //</editor-fold>
 }

@@ -55,6 +55,7 @@ import vn.mobileid.icao.sdk.message.resp.BiometricAuthResp;
 import vn.mobileid.icao.sdk.message.resp.BiometricEvidenceResp;
 import vn.mobileid.icao.sdk.message.resp.DisplayInformationResp;
 import vn.mobileid.icao.sdk.message.resp.ConnectToDeviceResp;
+import vn.mobileid.icao.sdk.message.resp.FingerEnrollmentResp;
 import vn.mobileid.icao.sdk.message.resp.ScanDocumentResp;
 
 /**
@@ -153,6 +154,10 @@ public final class ISPluginClient {
     public interface BiometricEvidenceListener extends DetailsListener {
 
         void onBiometricEvidence(BiometricEvidenceResp biometricEvidenceResp);
+    }
+    
+    public interface FingerEnrollmentListener extends DetailsListener {
+        void onFingerEnrollment(FingerEnrollmentResp fingerEnrollmentResp);
     }
 
     public interface ISListener {
@@ -782,6 +787,40 @@ public final class ISPluginClient {
                 .cmdType(cmdType)
                 .wait(new CountDownLatch(1))
                 .biometricEvidenceListener(biometricEvidenceListener)
+                .build();
+        handler.request.put(reqID, responseSync);
+        if (this.listener != null) {
+            this.listener.doSend(cmdType, reqID, req);
+        }
+        this.ch.writeAndFlush(new TextWebSocketFrame(Utils.GSON.toJson(req)));
+        return responseSync;
+    }
+    //</editor-fold>
+    
+    //<editor-fold defaultstate="collapsed" desc="GET FINGER ENROLLMENT">
+    public FingerEnrollmentResp fingerEnrollment(String cardNo, int timeoutInterval) throws ISPluginException {
+        return fingerEnrollmentSync(cardNo, timeoutInterval, null).waitResponse(timeoutInterval);
+    }
+
+    public ResponseSync<FingerEnrollmentResp> fingerEnrollmentSync(String cardNo, int timeoutInterval,
+            FingerEnrollmentListener fingerEnrollmentListener) throws ISPluginException {
+        check();
+        CmdType cmdType = CmdType.FingerEnrollment;
+        String reqID = Utils.getUUID();
+        ISRequest<RequireFingerEnrollment> req = ISRequest.<RequireFingerEnrollment>builder()
+                .cmdType(cmdType)
+                .requestID(reqID)
+                .timeoutInterval(timeoutInterval)
+                .data(RequireFingerEnrollment.builder()
+                        .cardNo(cardNo)
+                        .build())
+                .build();
+
+        LOGGER.debug(">>> SEND: [" + Utils.GSON.toJson(req) + "]");
+        ResponseSync<FingerEnrollmentResp> responseSync = ResponseSync.<FingerEnrollmentResp>builder()
+                .cmdType(cmdType)
+                .wait(new CountDownLatch(1))
+                .fingerEnrollmentListener(fingerEnrollmentListener)
                 .build();
         handler.request.put(reqID, responseSync);
         if (this.listener != null) {
